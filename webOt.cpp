@@ -51,7 +51,7 @@ void WebOt::run()
 	{
 		if((csd = SDLNet_TCP_Accept(sd)))
 		{
-			thread t(&WebOt::handleConnection, this, csd, NULL);
+			thread t(&WebOt::handleConnection, this, csd, (IPaddress*)NULL);
 			t.detach();				
 		}
 		//potentially throttle this, or limit connections in some way
