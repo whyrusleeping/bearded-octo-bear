@@ -2,10 +2,12 @@
 
 bool startsWith(string source, string token)
 {
-	if(source.substr(0, token.length()) == token)
-		return true;
-	else
-		return false;
+	bool b = true;
+	for(int i = 0; b && i < source.length; i++)
+	{
+		b &= (source[i] == token[i]);
+	}
+	return b;
 }
 
 bool contains(string source, string token)

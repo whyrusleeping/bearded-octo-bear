@@ -6,7 +6,11 @@
 #include <vector>
 
 #include "strExt.h"
+#ifdef WIN32
 #include "SDL_net.h"
+#else
+#include "SDL/SDL_net.h"
+#endif
 
 using std::vector;
 using std::queue;
@@ -28,6 +32,23 @@ typedef struct workerInfo
 	bool shouldDie; //the work manager will set this to true when the given worker should stop executing
 	bool died; //the worker sets this to true when it finally finishes
 }workerInfo;
+typedef struct search
+{
+	int source; //0- from a user 1- started by this node 2-received from another node
+	int ID;
+	int recvdFrom; //id of the node the request was received from
+	//some sort of 'path so far' for multiple purposes:
+	//      1) for returning the path to the target
+	//      2) for checking if the request received contains this node already, to prevent circular loops
+	int numSentOut; //the number of searches sent out from this node, used 
+}search;
+typedef struct netTableEntry
+{
+	string name;
+	IPaddress addr; //maybe
+	//mPath path;
+	int avPing;
+}netTableEntry;
 
 class WebOt
 {
@@ -140,57 +161,16 @@ public:
 
 	}
 
-	void work(int workerID)
-	{
-		p("worker started.\n");
-		//worker thread deals with input
-		string current = "";
-		bool needed = true;
-		int loops = 0;
-		while (needed)
-		{
-			current = getReceivedMessage();
-			if(current != "")
-			{
-				if(current.substr(0, 7) == "connect") //test command, supposed to make a new connection when prompted
-				{
-					makeConnection(current.substr(8), 2000);
-				}
+	void work(int workerID);
 
-				if(current.substr(0,5) == "echo ")
-				{
-					p(current.substr(5) + "\n");
-				}
-
-				if(current.substr(0,7) == "whereis")
-				{
-					//check connection list, else propogate message.
-					//need some sort of checking for circular propogation... request ID?
-				}
-				if(startsWith(current, "stop"))
-				{
-					p("Halting execution.\n");
-					halt();
-				}
-			}
-
-			loops++;
-			if(loops == 10) //im not certain why i felt the need to do this... maybe i didnt like the idea of threads being killed instantly?
-			{
-				loops = 0;
-				needed = amiNeeded(workerID);
-			}
-		}
-		numOfActiveWorkers--;
-	}
 	string getReceivedMessage()
 	{
 		std::lock_guard<std::mutex> lk(rcm_tex);
 		string rcm = "";
 		if(ReceivedMessages.size() > 0)
 		{
-		rcm = ReceivedMessages.front();
-		ReceivedMessages.pop();
+			rcm = ReceivedMessages.front();
+			ReceivedMessages.pop();
 		}
 		return rcm;
 	}
