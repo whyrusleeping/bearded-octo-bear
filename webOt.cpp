@@ -7,7 +7,7 @@ WebOt::WebOt()
 	highestWorkerID = 0;
 	haltSignal = false;
 	srand(time(NULL));
-
+	running = true;
 	//generate a random name for this node - later, have a specific server-node that manages naming new nodes
 	string GenName = "";
 	for(int i = 0; i < 10; i++)
