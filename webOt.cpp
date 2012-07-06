@@ -87,12 +87,12 @@ int WebOt::getConnectionId(IPaddress *ip, bool create=false)
 	return ID;
 }
 
-void WebOt::handleConnection(TCPsocket sock, IPaddress *remoteIP=(IPaddress*)NULL)
+void WebOt::handleConnection(TCPsocket sock, IPaddress *remoteIP=NULL)
 {
 	p("client connected.\n");
 	char buffer[512] = {0};
 
-	if(remoteIP == nullptr)
+	if(remoteIP == NULL)
 		remoteIP = SDLNet_TCP_GetPeerAddress(sock);
 	int connectionID = getConnectionId(remoteIP);
 	bool ConOpen = true;
