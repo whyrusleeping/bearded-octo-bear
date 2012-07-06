@@ -1,4 +1,5 @@
-#pragma once
+#ifndef WEBOT_H
+#define WEBOT_H
 #include <thread>
 #include <mutex>
 #include <iostream>
@@ -259,3 +260,6 @@ public:
 	}
 
 };
+
+
+#endif
