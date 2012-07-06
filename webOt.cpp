@@ -51,7 +51,7 @@ void WebOt::run()
 	{
 		if((csd = SDLNet_TCP_Accept(sd)))
 		{
-			thread t(&WebOt::handleConnection, this, csd, nullptr);
+			thread t(&WebOt::handleConnection, this, csd, NULL);
 			t.detach();				
 		}
 		//potentially throttle this, or limit connections in some way
@@ -87,12 +87,12 @@ int WebOt::getConnectionId(IPaddress *ip, bool create=false)
 	return ID;
 }
 
-void WebOt::handleConnection(TCPsocket sock, IPaddress *remoteIP=nullptr)
+void WebOt::handleConnection(TCPsocket sock, IPaddress *remoteIP=NULL)
 {
 	p("client connected.\n");
 	char buffer[512] = {0};
 
-	if(remoteIP == nullptr)
+	if(remoteIP == NULL)
 		remoteIP = SDLNet_TCP_GetPeerAddress(sock);
 	int connectionID = getConnectionId(remoteIP);
 	bool ConOpen = true;
