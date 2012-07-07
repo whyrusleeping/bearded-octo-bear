@@ -104,6 +104,8 @@ void WebOt::handleConnection(TCPsocket sock, IPaddress *remoteIP=NULL)
 		{
 			buffer[meslen] = '\0';
 			addReceivedMessage(buffer);
+			p(buffer);
+			p("\n");
 		}
 		a = getAssignment(connectionID);
 		if(a != "")
@@ -157,6 +159,18 @@ void WebOt::work(int workerID)
 				//note: this will work with short names, i.e: ~!j17:echo hello there
 
 				//~*:[command] tells the program to send the command to all nodes attatched to the current node
+
+				string ip = current.substr(1, current.find(':') -  1);
+				IPaddress n;
+				SDLNet_ResolveHost(&n, ip.c_str(), 2000);
+				for(int i = 0; i < connections.size(); i++)
+				{
+					if(connections[i].addr.host == n.host)
+					{
+						std::lock_guard<std::mutex> lk(sockA_tex);
+						sockAssigns[i].toDo.push(current.substr(current.find(':') + 1));
+					}
+				}
 			}
 			else if(current[0] == '$')
 			{
