@@ -104,8 +104,6 @@ void WebOt::handleConnection(TCPsocket sock, IPaddress *remoteIP=NULL)
 		{
 			buffer[meslen] = '\0';
 			addReceivedMessage(buffer);
-			p(buffer);
-			p("\n");
 		}
 		a = getAssignment(connectionID);
 		if(a != "")
@@ -206,4 +204,63 @@ void WebOt::work(int workerID)
 		}
 	}
 	workerDied(workerID);
+}
+
+string WebOt::getAssignment(int ID)
+{
+	std::lock_guard<std::mutex> lk(sockA_tex);
+	if(!sockAssigns[ID].toDo.empty())
+	{
+		string s = sockAssigns[ID].toDo.front();
+		sockAssigns[ID].toDo.pop();
+		return s;
+	}
+	else
+	{
+		return "";
+	}
+}
+
+void WebOt::makeConnection(string host, int port)
+{
+	IPaddress remoteIP;
+	TCPsocket sock;
+	SDLNet_ResolveHost(&ip, host.c_str(), port);
+
+	sock = SDLNet_TCP_Open(&ip);
+
+	thread t(&WebOt::handleConnection, this, sock, &remoteIP);
+	t.detach();
+
+}
+
+void WebOt::workManager()
+{
+	//this function will be a separate process that measures traffic and the amount of messages coming in/out
+	//if the workload is high, it may spawn new worker threads to manage 
+	p("Work manager started.\n");
+	bool alive = true;
+	highestWorkerID = 0;
+
+
+	while(alive)
+	{
+		if(numOfActiveWorkers == 0)
+		{
+			spawnWorker();
+		}
+
+		//insert logic for when to spawn a new worker
+		if(getNumReceivedMessages() > 10)
+			spawnWorker();
+
+		//insert logic for when to kill off a worker
+		if(getNumReceivedMessages() == 0 && this->numOfActiveWorkers > 1)
+			killWorker();
+
+
+		//Sleep(20); //sleep for 20 milliseconds, no sense in being too controlling
+		SDL_Delay(20);
+		alive = programIsRunning();
+	}	
 }

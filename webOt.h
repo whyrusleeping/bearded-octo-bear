@@ -92,40 +92,10 @@ public:
 
 	int init();
 	void run();
-
+	void work(int workerID);
 	void halt();
 
-	void workManager()
-	{
-		//this function will be a separate process that measures traffic and the amount of messages coming in/out
-		//if the workload is high, it may spawn new worker threads to manage 
-		p("Work manager started.\n");
-		bool alive = true;
-		highestWorkerID = 0;
-
-
-		while(alive)
-		{
-			if(numOfActiveWorkers == 0)
-			{
-				spawnWorker();
-			}
-
-			//insert logic for when to spawn a new worker
-			if(getNumReceivedMessages() > 10)
-				spawnWorker();
-
-			//insert logic for when to kill off a worker
-			if(getNumReceivedMessages() == 0 && this->numOfActiveWorkers > 1)
-				killWorker();
-
-
-			//Sleep(20); //sleep for 20 milliseconds, no sense in being too controlling
-			SDL_Delay(20);
-			alive = programIsRunning();
-		}	
-	}
-
+	void workManager();
 	void spawnWorker()
 	{
 		int IdToAssign = 0;
@@ -149,7 +119,6 @@ public:
 		newWorker.detach();
 		numOfActiveWorkers++;
 	}
-
 	void killWorker()
 	{
 		std::lock_guard<std::mutex> lk(workInfo_tex); //im hoping that this takes the scope of the if statement and is deleted after leaving it
@@ -161,9 +130,6 @@ public:
 		}
 
 	}
-
-	void work(int workerID);
-
 	string getReceivedMessage()
 	{
 		std::lock_guard<std::mutex> lk(rcm_tex);
@@ -177,35 +143,33 @@ public:
 	}
 	void addReceivedMessage(string newMess)
 	{
+		if(newMess[0] == ' ' || newMess[0] == '\n' || newMess[0] == '\t' || newMess[0] == '\r')
+			newMess = newMess.substr(1);
+
 		std::lock_guard<std::mutex> lk(rcm_tex);
 		ReceivedMessages.push(newMess);
 	}
-
 	int getNumReceivedMessages()
 	{
 		std::lock_guard<std::mutex> lk(rcm_tex);
 		return ReceivedMessages.size();
 	}
-
 	bool programIsRunning()
 	{
 		std::lock_guard<std::mutex> lk(run_tex);
 		return running;
 	}
-
 	bool amiNeeded(int workerID)
 	{
 		std::lock_guard<std::mutex> lk(workInfo_tex); //idea for workerInfo, add mutex to the struct 
 		return !workInfo[workerID].shouldDie;	
 	}
-
 	void workerDied(int workerID)
 	{
 		std::lock_guard<std::mutex> lk(workInfo_tex);
 		workInfo[workerID].died = true;
 		numOfActiveWorkers--;
 	}
-
 	bool workerIsDead(int workerID)
 	{
 		std::lock_guard<std::mutex> lk(workInfo_tex);
@@ -224,18 +188,7 @@ public:
 		cout << s;
 	}
 
-	void makeConnection(string host, int port)
-	{
-		IPaddress remoteIP;
-		TCPsocket sock;
-		SDLNet_ResolveHost(&ip, host.c_str(), port);
-
-		sock = SDLNet_TCP_Open(&ip);
-
-		thread t(&WebOt::handleConnection, this, sock, &remoteIP);
-		t.detach();
-
-	}
+	void makeConnection(string host, int port);
 
 	//For each new connection, a thread is spawned to handle it.
 	//512 is a VERY arbitrary number, messages will most likely be much bigger(or smaller?)
@@ -244,20 +197,7 @@ public:
 
 	void forwardConnection();
 
-	string getAssignment(int ID)
-	{
-		std::lock_guard<std::mutex> lk(sockA_tex);
-		if(!sockAssigns[ID].toDo.empty())
-		{
-			string s = sockAssigns[ID].toDo.front();
-			sockAssigns[ID].toDo.pop();
-			return s;
-		}
-		else
-		{
-			return "";
-		}
-	}
+	string getAssignment(int ID);
 
 };
 
