@@ -199,7 +199,7 @@ void WebOt::work(int workerID)
 				//check connection list, else propogate message.
 				//need some sort of checking for circular propogation... request ID?
 			}
-			if(startsWith(current, "stop"))
+			else if(startsWith(current, "stop"))
 			{
 				p("Halting execution.\n");
 				halt();

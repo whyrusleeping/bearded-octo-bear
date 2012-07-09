@@ -147,6 +147,13 @@ public:
 		if(newMess[0] == ' ' || newMess[0] == '\n' || newMess[0] == '\t' || newMess[0] == '\r')
 			newMess = newMess.substr(1);
 
+		char testC = newMess[newMess.length() - 1];
+		while(testC == '\n' || testC == '\r')
+		{
+			newMess = newMess.erase(newMess.length() - 1);
+			testC = newMess[newMess.length() - 1];
+		}
+
 		std::lock_guard<std::mutex> lk(rcm_tex);
 		ReceivedMessages.push(newMess);
 	}
