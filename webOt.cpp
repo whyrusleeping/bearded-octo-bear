@@ -51,7 +51,7 @@ void WebOt::run()
 	{
 		if((csd = SDLNet_TCP_Accept(sd)))
 		{
-			thread t(&WebOt::handleConnection, this, csd, (IPaddress*)NULL);
+			thread t(&WebOt::handleConnection, this, csd);
 			t.detach();				
 		}
 		//potentially throttle this, or limit connections in some way
@@ -87,23 +87,33 @@ int WebOt::getConnectionId(IPaddress *ip, bool create=false)
 	return ID;
 }
 
-void WebOt::handleConnection(TCPsocket sock, IPaddress *remoteIP=NULL)
+void WebOt::handleConnection(TCPsocket sock)
 {
+	SDLNet_SocketSet ss;
+	ss = SDLNet_AllocSocketSet(1);
+	SDLNet_TCP_AddSocket(ss, csd);
+
 	p("client connected.\n");
 	char buffer[512] = {0};
 
-	if(remoteIP == NULL)
-		remoteIP = SDLNet_TCP_GetPeerAddress(sock);
+	IPaddress *remoteIP;
+	remoteIP = SDLNet_TCP_GetPeerAddress(sock);
 	int connectionID = getConnectionId(remoteIP);
 	bool ConOpen = true;
 	string a;
 	int meslen = 0;
 	while(ConOpen)
 	{
-		if((meslen = SDLNet_TCP_Recv(sock, buffer, 512)) > 1 && buffer[0] != -1 && buffer[0] != '\r' && buffer[0] != '\n')
+		if(SDLNet_CheckSockets(ss, 1) > 0)
 		{
-			buffer[meslen] = '\0';
-			addReceivedMessage(buffer);
+			if(SDLNet_SocketReady(sock))
+			{
+				if((meslen = SDLNet_TCP_Recv(sock, buffer, 512)) > 1 && buffer[0] != -1 && buffer[0] != '\r' && buffer[0] != '\n')
+				{
+					buffer[meslen] = '\0';
+					addReceivedMessage(buffer);
+				}
+			}
 		}
 		a = getAssignment(connectionID);
 		if(a != "")
@@ -124,10 +134,10 @@ void WebOt::halt()
 	haltSignal = true;
 }
 
+//worker thread deals with input
 void WebOt::work(int workerID)
 {
-	p("worker started.\n");
-	//worker thread deals with input
+	p("worker started.\n");	
 	string current = "";
 	bool needed = true;
 	int loops = 0;
@@ -157,16 +167,16 @@ void WebOt::work(int workerID)
 				//note: this will work with short names, i.e: ~!j17:echo hello there
 
 				//~*:[command] tells the program to send the command to all nodes attatched to the current node
-
-				string ip = current.substr(1, current.find(':') -  1);
+				int colLoc = current.find(':');
+				string ip = current.substr(1, colLoc -  1);
 				IPaddress n;
 				SDLNet_ResolveHost(&n, ip.c_str(), 2000);
 				for(int i = 0; i < connections.size(); i++)
 				{
-					if(connections[i].addr.host == n.host)
+					if(n.host == connections[i].addr.host)
 					{
 						std::lock_guard<std::mutex> lk(sockA_tex);
-						sockAssigns[i].toDo.push(current.substr(current.find(':') + 1));
+						sockAssigns[i].toDo.push(current.substr(colLoc + 1));
 					}
 				}
 			}
@@ -229,7 +239,7 @@ void WebOt::makeConnection(string host, int port)
 
 	sock = SDLNet_TCP_Open(&ip);
 
-	thread t(&WebOt::handleConnection, this, sock, &remoteIP);
+	thread t(&WebOt::handleConnection, this, sock);
 	t.detach();
 
 }

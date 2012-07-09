@@ -27,6 +27,7 @@ typedef struct connection
 {
 	int ping;
 	IPaddress addr;
+	string ipStr;
 }connection;
 typedef struct workerInfo
 {
@@ -182,19 +183,19 @@ public:
 	int getConnectionId(IPaddress *ip, bool create);
 
 	//thread safe cout - another option for later is to have this write to a specified stream so a gui(or other external) can connect into the framework and read the output
-	void p(string s)
-	{
-		std::lock_guard<std::mutex> lk(output_tex);
-		cout << s;
-	}
+
 
 	void makeConnection(string host, int port);
 
 	//For each new connection, a thread is spawned to handle it.
 	//512 is a VERY arbitrary number, messages will most likely be much bigger(or smaller?)
 	//eventually have option for udp connection as well
-	void handleConnection(TCPsocket sock, IPaddress *remoteIP);
-
+	void handleConnection(TCPsocket sock);
+	void p(string s)
+	{
+		std::lock_guard<std::mutex> lk(output_tex);
+		cout << s;
+	}
 	void forwardConnection();
 
 	string getAssignment(int ID);

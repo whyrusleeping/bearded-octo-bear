@@ -3,7 +3,7 @@
 bool startsWith(string source, string token)
 {
 	bool b = true;
-	for(int i = 0; b && i < source.length(); i++)
+	for(int i = 0; b && i < token.length() && i < source.length(); i++)
 	{
 		b &= (source[i] == token[i]);
 	}
