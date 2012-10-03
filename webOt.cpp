@@ -42,6 +42,13 @@ int WebOt::init()
 	return 0;
 }
 
+//Threadsafe print function, since im not sure how threadsafe it is natively.
+void WebOt::p(string s)
+{
+    std::lock_guard<std::mutex> lk(output_tex);
+    cout << s;
+}
+
 void WebOt::run()
 {
 	thread wmgr(&WebOt::workManager, this);
@@ -127,6 +134,40 @@ void WebOt::handleConnection(TCPsocket sock)
 		}
 	}
 }
+void WebOt::killWorker()
+{
+		std::lock_guard<std::mutex> lk(workInfo_tex); //im hoping that this takes the scope of the if statement and is deleted after leaving it
+		if(workInfo[usedWorkerIDs.front()].died == false)
+		{
+			workInfo[usedWorkerIDs.front()].shouldDie = true;
+			unusedWorkerIDs.push(usedWorkerIDs.front());
+			usedWorkerIDs.pop();
+		}
+
+	}
+void WebOt::spawnWorker()
+	{
+		int IdToAssign = 0;
+		if(!unusedWorkerIDs.empty())
+		{					
+			IdToAssign = unusedWorkerIDs.front();
+			unusedWorkerIDs.pop();
+			while(!workerIsDead(IdToAssign))
+			{
+				unusedWorkerIDs.push(IdToAssign); //i need to be careful here, something could glitch up and this could potentially run forever and not spawn another proc
+				IdToAssign = unusedWorkerIDs.front();
+				unusedWorkerIDs.pop();
+			}
+		}
+		else
+		{
+			IdToAssign = highestWorkerID++;				
+		}
+		thread newWorker(&WebOt::work, this, IdToAssign);
+		usedWorkerIDs.push(IdToAssign);
+		newWorker.detach();
+		numOfActiveWorkers++;
+	}
 
 void WebOt::halt()
 {
@@ -231,6 +272,46 @@ string WebOt::getAssignment(int ID)
 	}
 }
 
+int WebOt::getNumReceivedMessages()
+{
+    std::lock_guard<std::mutex> lk(rcm_tex);
+    return ReceivedMessages.size();
+}
+
+bool WebOt::programIsRunning()
+{
+    std::lock_guard<std::mutex> lk(run_tex);
+    return running;
+}
+
+void WebOt::addReceivedMessage(string newMess)
+{
+    if(newMess[0] == ' ' || newMess[0] == '\n' || newMess[0] == '\t' || newMess[0] == '\r')
+        newMess = newMess.substr(1);
+
+    char testC = newMess[newMess.length() - 1];
+    while(testC == '\n' || testC == '\r')
+    {
+        newMess = newMess.erase(newMess.length() - 1);
+        testC = newMess[newMess.length() - 1];
+    }
+
+    std::lock_guard<std::mutex> lk(rcm_tex);
+    ReceivedMessages.push(newMess);
+}
+
+string WebOt::getReceivedMessage()
+{
+    std::lock_guard<std::mutex> lk(rcm_tex);
+    string rcm = "";
+    if(ReceivedMessages.size() > 0)
+    {
+        rcm = ReceivedMessages.front();
+        ReceivedMessages.pop();
+    }
+    return rcm;
+}
+
 void WebOt::makeConnection(string host, int port)
 {
 	IPaddress remoteIP;
@@ -265,7 +346,7 @@ void WebOt::workManager()
 			spawnWorker();
 
 		//insert logic for when to kill off a worker
-		if(getNumReceivedMessages() == 0 && this->numOfActiveWorkers > 1)
+        if(getNumReceivedMessages() == 0 && this->numOfActiveWorkers > 1)
 			killWorker();
 
 
@@ -273,4 +354,23 @@ void WebOt::workManager()
 		SDL_Delay(20);
 		alive = programIsRunning();
 	}	
+}
+
+bool WebOt::amiNeeded(int workerID)
+{
+    std::lock_guard<std::mutex> lk(workInfo_tex); //idea for workerInfo, add mutex to the struct
+    return !workInfo[workerID].shouldDie;
+}
+
+void WebOt::workerDied(int workerID)
+{
+    std::lock_guard<std::mutex> lk(workInfo_tex);
+    workInfo[workerID].died = true;
+    numOfActiveWorkers--;
+}
+
+bool WebOt::workerIsDead(int workerID)
+{
+    std::lock_guard<std::mutex> lk(workInfo_tex);
+    return workInfo[workerID].died;
 }

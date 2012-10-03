@@ -1,2 +1,7 @@
+CC=g++
+
+
 all:
-	g++ -std=gnu++0x main.cpp webOt.h webOt.cpp strExt.h strExt.cpp -lSDLmain -lSDL_net -o webOt
+	$(CC) main.cpp webOt.cpp strExt.cpp -lSDLmain -lSDL -lSDL_net -std=gnu++0x -o webOt
+
+
